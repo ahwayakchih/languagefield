@@ -13,6 +13,10 @@ Field: Language extension provides field with language select box.
 It also adds "browser-languages" parameter to list of parameters 
 available for data-sources and XSLT to use.
 
+When sorting by language field, it can take browser language settings 
+into account, so entries are sorted in the same order as browser  
+languages.
+
 
 [INSTALLATION]
 
