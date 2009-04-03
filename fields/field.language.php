@@ -439,7 +439,12 @@
 				//		browser languages is found, next in order will always be default.
 				if (!in_array('en', $languages)) array_push($languages, 'en');
 
-				$languages = array_map(array($this, 'cleanValue'), ($order == 'ASC' ? $languages : array_reverse($languages)));
+				// If user selected specific language, make sure it will be first
+				if ((($temp = $_COOKIE['language']) || ($temp = $_GET['language'])) && preg_match('/^[a-z_]+$/', $temp)) {
+					array_unshift($languages, $temp);
+				}
+
+				$languages = array_map(array($this, 'cleanValue'), ($order == 'ASC' ? array_unique($languages) : array_unique(array_reverse($languages))));
 				$order = 'DESC';
 				$field = "FIELD(`ed`.`lang`, '".implode("','", $languages)."')";
 			}
