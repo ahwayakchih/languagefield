@@ -440,8 +440,12 @@
 				if (!in_array('en', $languages)) array_push($languages, 'en');
 
 				// If user selected specific language, make sure it will be first
-				if ((($temp = $_COOKIE['language']) || ($temp = $_GET['language'])) && preg_match('/^[a-z_]+$/', $temp)) {
+				if ((($temp = $_GET['language']) || ($temp = $_COOKIE['language']) || ($temp = $_SESSION['language'])) && preg_match('/^[a-z_]+$/', $temp)) {
 					array_unshift($languages, $temp);
+					if ($_GET['language']) {
+						setcookie('language', $temp, time() + TWO_WEEKS, '/');
+						$_SESSION['language'] = $temp;
+					}
 				}
 
 				$languages = array_map(array($this, 'cleanValue'), ($order == 'ASC' ? array_unique($languages) : array_unique(array_reverse($languages))));
