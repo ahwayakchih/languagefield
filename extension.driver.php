@@ -6,8 +6,8 @@
 	
 		public function about(){
 			return array('name' => __('Field: Language'),
-						 'version' => '1.0',
-						 'release-date' => '2009-03-04',
+						 'version' => '1.1',
+						 'release-date' => '2011-03-15',
 						 'author' => array('name' => 'Marcin Konicki',
 										   'website' => 'http://ahwayakchih.neoni.net',
 										   'email' => 'ahwayakchih@neoni.net'),
