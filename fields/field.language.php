@@ -1,5 +1,7 @@
 <?php
 
+	require_once(EXTENSIONS . '/languagefield/lib/languages.php');
+
 	Class fieldLanguage extends Field {
 
 		// I don't know those languages, so if You know for sure that browser uses different code,
@@ -133,7 +135,7 @@
 			'sr' => 'Srpski/српски',				// Serbian
 			'sn' => 'chiShona',						// Shona
 			'ii' => 'ꆇꉙ',							// Sichuan Yi
-			'si' => 'සිංහල',						// Sinhalese, Sinhala
+			'si' => 'සිංහල',							// Sinhalese, Sinhala
 			'sk' => 'Slovenčina',					// Slovak
 			'ls' => 'Slovenščina',					// Slovenian
 			'so' => 'Soomaaliga/af Soomaali',		// Somali
@@ -434,7 +436,7 @@
 
 		// Prepare SQL part responsible for sorting entries by this field
 		public function buildSortingSQL(&$joins, &$where, &$sort, $order = 'ASC') {
-			if ($this->get('enable_browser_language_support') == 'yes' && count($languages = Lang::getBrowserLanguages()) > 0) {
+			if ($this->get('enable_browser_language_support') == 'yes' && count($languages = getBrowserLanguages()) > 0) {
 				// TODO: allow selecting default language, so if browser does not hint us about languages, or none of 
 				//		browser languages is found, next in order will always be default.
 				if (!in_array('en', $languages)) array_push($languages, 'en');

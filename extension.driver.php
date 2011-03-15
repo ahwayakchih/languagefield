@@ -1,4 +1,7 @@
 <?php
+
+	require_once(EXTENSIONS . '/languagefield/lib/languages.php');
+
 	Class extension_languageField extends Extension{
 	
 		public function about(){
@@ -24,7 +27,7 @@
 
 		public function __pageParamsResolve($ctx) {
 			// context array contains: &$params
-			$languages = Lang::getBrowserLanguages();
+			$languages = getBrowserLanguages();
 			$ctx['params']['browser-languages'] = implode(',', $languages);
 /*
 			$index = 1;
