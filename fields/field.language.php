@@ -450,7 +450,10 @@
 					}
 				}
 
-				$languages = array_map(array($this, 'cleanValue'), ($order == 'ASC' ? array_unique($languages) : array_unique(array_reverse($languages))));
+				// array_unique leaves first encountered value, so it has to be run before array_reverse,
+				// otherwise selected order will not be used, e.g., "pl,en-US,en,pl" (after passing ?language=pl in URL)
+				// will become "pl,en,en-US" instead of "en,en-US,pl".
+				$languages = array_map(array($this, 'cleanValue'), ($order == 'ASC' ? array_unique($languages) : array_reverse(array_unique($languages))));
 				$order = 'DESC';
 				$field = "FIELD(`ed`.`lang`, '".implode("','", $languages)."')";
 			}
