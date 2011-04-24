@@ -38,7 +38,7 @@
 		}
 
 		public function uninstall(){
-			return $this->_Parent->Database->query("DROP TABLE `tbl_fields_language`");
+			return Symphony::Database()->query("DROP TABLE `tbl_fields_language`");
 		}
 		
 		public function update($previousVersion){
@@ -46,7 +46,7 @@
 		}
 
 		public function install(){
-			return $this->_Parent->Database->query("CREATE TABLE `tbl_fields_language` (
+			return Symphony::Database()->query("CREATE TABLE `tbl_fields_language` (
 				`id` int(11) unsigned NOT NULL auto_increment,
 				`field_id` int(11) unsigned NOT NULL,
 				`allow_multiple_selection` enum('yes','no') NOT NULL default 'no',

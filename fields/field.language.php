@@ -390,7 +390,11 @@
 
 			// Allow to select which languages should be available for authors to select when publishing entries.
 			$options = array();
-			$selected = ($this->get('allowed_languages') ? explode(',', $this->get('allowed_languages')) : array());
+			$selected = $this->get('allowed_languages');
+			if (!is_array($selected) && !empty($selected)) {
+				if (empty($selected)) $selected = array();
+				else $selected = explode(',', $selected);
+			}
 			foreach ($this->lang as $lang => $name) {
 				$options[] = array($lang, in_array($lang, $selected), $name);
 			}
@@ -504,16 +508,16 @@
 			$fields['enable_browser_language_support'] = ($this->get('enable_browser_language_support') ? $this->get('enable_browser_language_support') : 'no');
 			$fields['allowed_languages'] = ($this->get('allowed_languages') ? implode(',', $this->get('allowed_languages')) : '');
 
-			$this->Database->query("DELETE FROM `tbl_fields_".$this->handle()."` WHERE `field_id` = '{$id}' LIMIT 1");
+			Symphony::Database()->query("DELETE FROM `tbl_fields_".$this->handle()."` WHERE `field_id` = '{$id}' LIMIT 1");
 
-			if (!$this->Database->insert($fields, 'tbl_fields_' . $this->handle())) return false;
+			if (!Symphony::Database()->insert($fields, 'tbl_fields_' . $this->handle())) return false;
 
 			return true;
 		}
 
 		// Create database table which will keep field values for each entry
 		public function createTable() {
-			return $this->_engine->Database->query(
+			return Symphony::Database()->query(
 				'CREATE TABLE IF NOT EXISTS `tbl_entries_data_'.$this->get('id').'` (
 					`id` int(11) unsigned NOT NULL auto_increment,
 					`entry_id` int(11) unsigned NOT NULL,
@@ -531,7 +535,7 @@
 
 		// Helper function which returns all languages which entries use
 		private function fetchLanguages() {
-			return $this->_engine->Database->fetchCol('lang', "SELECT `lang` FROM `tbl_entries_data_".$this->get('id')."` GROUP BY `lang`");
+			return Symphony::Database()->fetchCol('lang', "SELECT `lang` FROM `tbl_entries_data_".$this->get('id')."` GROUP BY `lang`");
 		}
 	}
 
