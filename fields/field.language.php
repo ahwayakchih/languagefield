@@ -391,7 +391,7 @@
 			// Allow to select which languages should be available for authors to select when publishing entries.
 			$options = array();
 			$selected = $this->get('allowed_languages');
-			if (!is_array($selected) && !empty($selected)) {
+			if (!is_array($selected)) {
 				if (empty($selected)) $selected = array();
 				else $selected = explode(',', $selected);
 			}
