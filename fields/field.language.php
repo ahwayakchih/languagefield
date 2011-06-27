@@ -4,9 +4,9 @@
 
 	Class fieldLanguage extends Field {
 
-		// I don't know those languages, so if You know for sure that browser uses different code,
+		// I don't know these languages, so if You know for sure that browser uses different code,
 		// or that native name should be different, please let me know about that :).
-		// It would also be great, if whole string could be in native form, including name of country.
+		// It would also be great, if whole string could be in native form, including country name.
 		public $lang = array(						// [English name]
 			'ab' => 'аҧсуа бызшәа',					// Abkhazian
 			'af' => 'Afrikaans',					// Afrikaans
@@ -198,115 +198,166 @@
 			$this->set('required', 'yes');
 		}
 
-		/*
-		**	Implementation of Symphony API
-		*/
 
-		// Specify if field value can be set from entry list table, i.e., section content page
+	/*-------------------------------------------------------------------------
+		Definition:
+	-------------------------------------------------------------------------*/
+
+		public function canShowTableColumn(){
+			return $this->_showcolumn;
+		}
+
 		public function canToggle() {
 			return ($this->get('allow_multiple_selection') == 'yes' ? false : true);
 		}
 
-		// Specify if entries can be grouped by field when listed in XML
-		public function allowDatasourceOutputGrouping() {
-			return $this->canToggle();
-		}
-
-		// Specify if field requires grouping in SQL select (to avoid duplicate entry rows)
-		public function requiresSQLGrouping() {
-			return true;
-		}
-
-		// Specify if field can output it's value as XSLT parameter
-		public function allowDatasourceParamOutput() {
-			return true;
-		}
-
-		// Specify if entries can be filtered by this field
-		public function canFilter() {
-			return true;
-		}
-
-		// TODO: what is this for? When data is imported? Does it have something to do with ensembles?
-		public function canImport() {
-			return true;
-		}
-
-		// Specify if field can be prepopulated through GET
-		public function canPrePopulate() {
-			return true;
-		}
-
-		// Specify if entries can be sorted by this field
-		public function isSortable() {
-			return true;
-		}
-
-		// Return value to be used as XSLT parameter
-		public function getParameterPoolValue($data) {
-			if (is_array($data['lang'])) return implode(', ', $data['lang']);
-			return $data['lang'];
-		}
-
-		// Return list of values that can be applied to entry on section content page
 		public function getToggleStates() {
 			$states = array();
 			$allowed = array_fill_keys(explode(',', $this->get('allowed_languages')), NULL);
 			return array_intersect_key($this->lang, $allowed);
 		}
 
-		// Apply new field value to data
 		public function toggleFieldData($data, $newState) {
 			$data['lang'] = General::sanitize($newState);
 			return $data;
 		}
 
-		// Generate XML data containing field values
-		public function appendFormattedElement(&$wrapper, $data, $encode = false) {
-			if (!is_array($data) or empty($data)) return;
-
-			$list = new XMLElement($this->get('element_name'));
-
-			if (!is_array($data['lang'])) {
-				$data['lang'] = array($data['lang']);
-			}
-
-			foreach ($data['lang'] as $lang) {
-				$list->appendChild(new XMLElement('item', General::sanitize($this->lang[$lang]), array('handle'	=> $lang)));
-			}
-
-			$wrapper->appendChild($list);
+		public function canFilter() {
+			return true;
 		}
 
-		// Generate groups which will be used by Datasource to when generating XML.
-		// Entries with the same value of this field will be wrapped field tag
-		// (so it is not grouping in the same sense as SQL grouping! :).
-		public function groupRecords($records) {
-			if(!is_array($records) || empty($records)) return;
-
-			$name = $this->get('element_name');
-			$groups = array($name => array());
-
-			foreach ($records as $r) {
-				$data = $r->getData($this->get('id'));
-
-				if (!isset($groups[$name][$data['lang']])) {
-					$groups[$name][$data['lang']] = array(
-						'attr' => array(
-							'handle' => $data['lang']
-						),
-						'records' => array(),
-						'groups' => array(),
-					);
-				}
-				$groups[$name][$data['lang']]['records'][] = $r;
-			}
-
-			return $groups;
+		public function canPrePopulate() {
+			return true;
 		}
 
-		// Build field widget for entry edit page
-		public function displayPublishPanel(&$wrapper, $data = NULL, $flagWithError = NULL, $fieldnamePrefix = NULL, $fieldnamePostfix = NULL) {
+		public function isSortable() {
+			return true;
+		}
+
+		public function allowDatasourceOutputGrouping() {
+			return $this->canToggle();
+		}
+
+		public function requiresSQLGrouping() {
+			return true;
+		}
+
+		public function allowDatasourceParamOutput() {
+			return true;
+		}
+
+
+	/*-------------------------------------------------------------------------
+		Setup:
+	-------------------------------------------------------------------------*/
+
+		public function createTable() {
+			return Symphony::Database()->query(
+				'CREATE TABLE IF NOT EXISTS `tbl_entries_data_'.$this->get('id').'` (
+					`id` int(11) unsigned NOT NULL auto_increment,
+					`entry_id` int(11) unsigned NOT NULL,
+					`lang` varchar(10) default NULL,
+					PRIMARY KEY (`id`),
+					KEY `entry_id` (`entry_id`),
+					KEY `language` (`lang`)
+				) TYPE=MyISAM;'
+			);
+		}
+
+
+	/*-------------------------------------------------------------------------
+		Settings:
+	-------------------------------------------------------------------------*/
+
+		public function findDefaults(&$fields) {
+			if (!isset($fields['allow_multiple_selection'])) $fields['allow_multiple_selection'] = 'no';
+			if (!isset($fields['enable_browser_language_support'])) $fields['enable_browser_language_support'] = 'no';
+			if (!isset($fields['allowed_languages'])) $fields['allowed_languages'] = '';
+		}
+
+		public function displaySettingsPanel(&$wrapper, $errors = NULL) {
+			parent::displaySettingsPanel($wrapper, $errors);
+
+			// Allow to select which languages should be available for authors to select when publishing entries.
+			$options = array();
+			$selected = $this->get('allowed_languages');
+			if (!is_array($selected)) {
+				if (empty($selected)) $selected = array();
+				else $selected = explode(',', $selected);
+			}
+			foreach ($this->lang as $lang => $name) {
+				$options[] = array($lang, in_array($lang, $selected), $name);
+			}
+			$label = Widget::Label(__('Show only'));
+			$label->appendChild(Widget::Select('fields['.$this->get('sortorder').'][allowed_languages][]', $options, array('multiple' => 'multiple')));
+			$wrapper->appendChild($label);
+
+			$div = new XMLElement('div', NULL, array('class' => 'group'));
+
+			$group = new XMLElement('div');
+			// Allow selection of multiple items
+			$label = Widget::Label();
+			$input = Widget::Input('fields['.$this->get('sortorder').'][allow_multiple_selection]', 'yes', 'checkbox');
+			if ($this->get('allow_multiple_selection') == 'yes') $input->setAttribute('checked', 'checked');
+			$label->setValue(__('%s Allow selection of multiple languages', array($input->generate())));
+			$group->appendChild($label);
+
+			$this->appendShowColumnCheckbox($group);
+			$this->appendRequiredCheckbox($group);
+			$div->appendChild($group);
+
+
+			$group = new XMLElement('div');
+			// When browser language support is enabled, and data-source is sorted by this field,
+			// entries will be sorted by the same order as languages found in list of browser's preferred
+			// languages.
+			$label = Widget::Label();
+			$input = Widget::Input('fields['.$this->get('sortorder').'][enable_browser_language_support]', 'yes', 'checkbox');
+			if ($this->get('enable_browser_language_support') == 'yes') $input->setAttribute('checked', 'checked');
+			$label->setValue(__('%s Support browser\'s language settings', array($input->generate())));
+			$group->appendChild($label);
+
+			// Select default language, used when browser does not define preferred languages, or none of them is used on site.
+			$selected = $this->get('default_language');
+			$options = array(array('', !isset($this->lang[$selected]), ''));
+			foreach ($this->lang as $lang => $name) {
+				$options[] = array($lang, ($lang == $selected), $name);
+			}
+			$label = Widget::Label(__('Default to'));
+			$label->appendChild(Widget::Select('fields['.$this->get('sortorder').'][default_language]', $options));
+			$group->appendChild($label);
+			$div->appendChild($group);
+
+			$wrapper->appendChild($div);
+		}
+
+		public function commit() {
+			if (!parent::commit()) return false;
+
+			$id = $this->get('id');
+
+			if ($id === false) return false;
+
+			$fields = array();
+			$fields['field_id'] = $id;
+			$fields['allow_multiple_selection'] = ($this->get('allow_multiple_selection') ? $this->get('allow_multiple_selection') : 'no');
+			$fields['enable_browser_language_support'] = ($this->get('enable_browser_language_support') ? $this->get('enable_browser_language_support') : 'no');
+			$fields['allowed_languages'] = ($this->get('allowed_languages') ? implode(',', $this->get('allowed_languages')) : '');
+			$fields['default_language'] = (isset($this->lang[$this->get('default_language')]) ? $this->get('default_language') : '');
+
+			Symphony::Database()->query("DELETE FROM `tbl_fields_".$this->handle()."` WHERE `field_id` = '{$id}' LIMIT 1");
+
+			if (!Symphony::Database()->insert($fields, 'tbl_fields_' . $this->handle())) return false;
+
+			return true;
+		}
+
+
+	/*-------------------------------------------------------------------------
+		Publish:
+	-------------------------------------------------------------------------*/
+
+		public function displayPublishPanel(&$wrapper, $data = NULL, $flagWithError = NULL, $fieldnamePrefix = NULL, $fieldnamePostfix = NULL, $entry_id = null) {
 			if (!is_array($data['lang'])) $data['lang'] = array($data['lang']);
 
 			$options = array();
@@ -326,100 +377,6 @@
 			else $wrapper->appendChild($label);
 		}
 
-		// Generate field widget used by Events when rendering example markup
-		public function getExampleFormMarkup() {
-			$states = $this->getToggleStates();
-			$options = array();
-
-			foreach ($states as $lang => $name) {
-				$options[] = array($lang, NULL, $name);
-			}
-
-			$fieldname = 'fields['.$this->get('element_name').']';
-			if ($this->get('allow_multiple_selection') == 'yes') $fieldname .= '[]';
-
-			$label = Widget::Label($this->get('label'));
-			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
-
-			return $label;
-		}
-
-		// Build "filter by field" widget for Datasource edit page
-		public function displayDatasourceFilterPanel(&$wrapper, $data = NULL, $errors = NULL, $fieldnamePrefix = NULL, $fieldnamePostfix = NULL) {
-			parent::displayDatasourceFilterPanel($wrapper, $data, $errors, $fieldnamePrefix, $fieldnamePostfix);
-
-			$existing_options = $this->fetchLanguages();
-			if (is_array($existing_options) && !empty($existing_options)) {
-				$optionlist = new XMLElement('ul');
-				$optionlist->setAttribute('class', 'tags');
-
-				foreach ($existing_options as $option) {
-					$optionlist->appendChild(new XMLElement('li', $this->lang[$option], array('class' => $option)));
-				}
-
-				$wrapper->appendChild($optionlist);
-			}
-		}
-
-		// Render value which will be used in entry list table (on section content page)
-		public function prepareTableValue($data, XMLElement $link = NULL) {
-			if (!is_array($data) || (is_array($data) && !isset($data['lang']))) return parent::prepareTableValue(NULL);
-			if (!is_array($data['lang'])) $data['lang'] = array($data['lang']);
-
-			$result = array();
-			foreach ($data['lang'] as $lang) {
-				if (isset($this->lang[$lang])) $result[$lang] = $this->lang[$lang];
-			}
-
-			return parent::prepareTableValue(array('value' => @implode(', ', $result)), $link);
-		}
-
-		// Prepare default values for field settings widget (used on section edit page)
-		public function findDefaults(&$fields) {
-			if (!isset($fields['allow_multiple_selection'])) $fields['allow_multiple_selection'] = 'no';
-			if (!isset($fields['enable_browser_language_support'])) $fields['enable_browser_language_support'] = 'no';
-			if (!isset($fields['allowed_languages'])) $fields['allowed_languages'] = '';
-		}
-
-		// Build field settings widget used on section edit page
-		public function displaySettingsPanel(&$wrapper, $errors = NULL) {
-			parent::displaySettingsPanel($wrapper, $errors);
-
-			// Allow to select which languages should be available for authors to select when publishing entries.
-			$options = array();
-			$selected = $this->get('allowed_languages');
-			if (!is_array($selected)) {
-				if (empty($selected)) $selected = array();
-				else $selected = explode(',', $selected);
-			}
-			foreach ($this->lang as $lang => $name) {
-				$options[] = array($lang, in_array($lang, $selected), $name);
-			}
-			$label = Widget::Label(__('Show only'));
-			$label->appendChild(Widget::Select('fields['.$this->get('sortorder').'][allowed_languages][]', $options, array('multiple' => 'multiple')));
-			$wrapper->appendChild($label);
-
-			// Allow selection of multiple items
-			$label = Widget::Label();
-			$input = Widget::Input('fields['.$this->get('sortorder').'][allow_multiple_selection]', 'yes', 'checkbox');
-			if ($this->get('allow_multiple_selection') == 'yes') $input->setAttribute('checked', 'checked');
-			$label->setValue(__('%s Allow selection of multiple languages', array($input->generate())));
-			$wrapper->appendChild($label);
-
-			// When browser language support is enabled, and Datasource is sorted by this field,
-			// entries will be sorted by the same order as languages found in list of browser preferred
-			// languages.
-			$label = Widget::Label();
-			$input = Widget::Input('fields['.$this->get('sortorder').'][enable_browser_language_support]', 'yes', 'checkbox');
-			if ($this->get('enable_browser_language_support') == 'yes') $input->setAttribute('checked', 'checked');
-			$label->setValue(__('%s Support browser language settings', array($input->generate())));
-			$wrapper->appendChild($label);
-
-			$this->appendShowColumnCheckbox($wrapper);
-			$this->appendRequiredCheckbox($wrapper);
-		}
-
-		// Prepare value to be saved to database
 		public function processRawFieldData($data, &$status, $simulate = false, $entry_id = NULL) {
 			$status = self::__OK__;
 
@@ -441,37 +398,66 @@
 			return $result;
 		}
 
-		// Prepare SQL part responsible for sorting entries by this field
-		public function buildSortingSQL(&$joins, &$where, &$sort, $order = 'ASC') {
-			if ($this->get('enable_browser_language_support') == 'yes' && count($languages = getBrowserLanguages()) > 0) {
-				// TODO: allow selecting default language, so if browser does not hint us about languages, or none of 
-				//		browser languages is found, next in order will always be default.
-				if (!in_array('en', $languages)) array_push($languages, 'en');
 
-				// If user selected specific language, make sure it will be first
-				if ((($temp = $_GET['language']) || ($temp = $_COOKIE['language']) || ($temp = $_SESSION['language'])) && preg_match('/^[a-z_]+$/', $temp)) {
-					array_unshift($languages, $temp);
-					if ($_GET['language']) {
-						setcookie('language', $temp, time() + TWO_WEEKS, '/');
-						$_SESSION['language'] = $temp;
-					}
-				}
+	/*-------------------------------------------------------------------------
+		Output:
+	-------------------------------------------------------------------------*/
 
-				// array_unique leaves first encountered value, so it has to be run before array_reverse,
-				// otherwise selected order will not be used, e.g., "pl,en-US,en,pl" (after passing ?language=pl in URL)
-				// will become "pl,en,en-US" instead of "en,en-US,pl".
-				$languages = array_map(array($this, 'cleanValue'), ($order == 'ASC' ? array_unique($languages) : array_reverse(array_unique($languages))));
-				$order = 'DESC';
-				$field = "FIELD(`ed`.`lang`, '".implode("','", $languages)."')";
+		public function appendFormattedElement(&$wrapper, $data, $encode = false) {
+			if (!is_array($data) or empty($data)) return;
+
+			$list = new XMLElement($this->get('element_name'));
+
+			if (!is_array($data['lang'])) {
+				$data['lang'] = array($data['lang']);
 			}
-			else $field = '`ed`.`lang`';
 
-			$joins .= " INNER JOIN `tbl_entries_data_".$this->get('id')."` AS `ed` ON (`e`.`id` = `ed`.`entry_id`) ";
-			$sort = ' ORDER BY ' . (in_array(strtolower($order), array('random', 'rand')) ? 'RAND()' : "{$field} {$order} ");
+			foreach ($data['lang'] as $lang) {
+				$list->appendChild(new XMLElement('item', General::sanitize($this->lang[$lang]), array('handle'	=> $lang)));
+			}
+
+			$wrapper->appendChild($list);
 		}
 
-		// Prepare SQL part responsible for filtering entries by this field
-		public function buildDSRetrivalSQL($data, &$joins, &$where, $andOperation = false) {
+		public function prepareTableValue($data, XMLElement $link = NULL, $entry_id = null) {
+			if (!is_array($data) || (is_array($data) && !isset($data['lang']))) return parent::prepareTableValue(NULL);
+			if (!is_array($data['lang'])) $data['lang'] = array($data['lang']);
+
+			$result = array();
+			foreach ($data['lang'] as $lang) {
+				if (isset($this->lang[$lang])) $result[$lang] = $this->lang[$lang];
+			}
+
+			return parent::prepareTableValue(array('value' => @implode(', ', $result)), $link);
+		}
+
+		public function getParameterPoolValue($data, $entry_id=NULL) {
+			if (is_array($data['lang'])) return implode(', ', $data['lang']);
+			return $data['lang'];
+		}
+
+
+	/*-------------------------------------------------------------------------
+		Filtering:
+	-------------------------------------------------------------------------*/
+
+		public function displayDatasourceFilterPanel(&$wrapper, $data = NULL, $errors = NULL, $fieldnamePrefix = NULL, $fieldnamePostfix = NULL) {
+			parent::displayDatasourceFilterPanel($wrapper, $data, $errors, $fieldnamePrefix, $fieldnamePostfix);
+
+			$existing_options = $this->fetchLanguages();
+			if (is_array($existing_options) && !empty($existing_options)) {
+				$optionlist = new XMLElement('ul');
+				$optionlist->setAttribute('class', 'tags');
+
+				foreach ($existing_options as $option) {
+					$optionlist->appendChild(new XMLElement('li', $this->lang[$option], array('class' => $option)));
+				}
+
+				$wrapper->appendChild($optionlist);
+			}
+		}
+
+		public function buildDSRetrievalSQL($data, &$joins, &$where, $andOperation = false) {
 			$field_id = $this->get('id');
 			if (!is_array($data)) $data = array($data);
 
@@ -497,48 +483,106 @@
 			return true;
 		}
 
-		// Save field settings (edited on section edit page) to database
-		public function commit() {
-			if (!parent::commit()) return false;
 
-			$id = $this->get('id');
+	/*-------------------------------------------------------------------------
+		Sorting:
+	-------------------------------------------------------------------------*/
 
-			if ($id === false) return false;
+		public function buildSortingSQL(&$joins, &$where, &$sort, $order = 'ASC') {
+			if ($this->get('enable_browser_language_support') == 'yes' && count($languages = getBrowserLanguages()) > 0) {
+				// Allow selecting default language, so if browser does not hint us about languages, or none of 
+				// browser languages is found, next in order will always be default.
+				$default = $this->get('default_language');
+				if (isset($this->lang[$default]) && !in_array($default, $languages)) array_push($languages, $default);
 
-			$fields = array();
-			$fields['field_id'] = $id;
-			$fields['allow_multiple_selection'] = ($this->get('allow_multiple_selection') ? $this->get('allow_multiple_selection') : 'no');
-			$fields['enable_browser_language_support'] = ($this->get('enable_browser_language_support') ? $this->get('enable_browser_language_support') : 'no');
-			$fields['allowed_languages'] = ($this->get('allowed_languages') ? implode(',', $this->get('allowed_languages')) : '');
+				// If user selected specific language, make sure it will be the first
+				if ((($temp = $_GET['language']) || ($temp = $_COOKIE['language']) || ($temp = $_SESSION['language'])) && isset($this->lang[$temp])) {
+					array_unshift($languages, $temp);
+					if ($_GET['language']) {
+						setcookie('language', $temp, time() + TWO_WEEKS, '/');
+						$_SESSION['language'] = $temp;
+					}
+				}
 
-			Symphony::Database()->query("DELETE FROM `tbl_fields_".$this->handle()."` WHERE `field_id` = '{$id}' LIMIT 1");
+				// array_unique keeps first encountered value, so it has to be run before array_reverse,
+				// otherwise selected order will not be used, e.g., "pl,en-US,en,pl" (after passing ?language=pl in URL)
+				// will become "pl,en,en-US" instead of "en,en-US,pl".
+				$languages = array_map(array($this, 'cleanValue'), ($order == 'ASC' ? array_unique($languages) : array_reverse(array_unique($languages))));
+				$order = 'DESC';
+				$field = "FIELD(`ed`.`lang`, '".implode("','", $languages)."')";
+			}
+			else $field = '`ed`.`lang`';
 
-			if (!Symphony::Database()->insert($fields, 'tbl_fields_' . $this->handle())) return false;
-
-			return true;
+			$joins .= " INNER JOIN `tbl_entries_data_".$this->get('id')."` AS `ed` ON (`e`.`id` = `ed`.`entry_id`) ";
+			$sort = ' ORDER BY ' . (in_array(strtolower($order), array('random', 'rand')) ? 'RAND()' : "{$field} {$order} ");
 		}
 
-		// Create database table which will keep field values for each entry
-		public function createTable() {
-			return Symphony::Database()->query(
-				'CREATE TABLE IF NOT EXISTS `tbl_entries_data_'.$this->get('id').'` (
-					`id` int(11) unsigned NOT NULL auto_increment,
-					`entry_id` int(11) unsigned NOT NULL,
-					`lang` varchar(10) default NULL,
-					PRIMARY KEY (`id`),
-					KEY `entry_id` (`entry_id`),
-					KEY `language` (`lang`)
-				) TYPE=MyISAM;'
-			);
+
+	/*-------------------------------------------------------------------------
+		Grouping:
+	-------------------------------------------------------------------------*/
+
+		public function groupRecords($records) {
+			if(!is_array($records) || empty($records)) return;
+
+			$name = $this->get('element_name');
+			$groups = array($name => array());
+
+			foreach ($records as $r) {
+				$data = $r->getData($this->get('id'));
+
+				if (!isset($groups[$name][$data['lang']])) {
+					$groups[$name][$data['lang']] = array(
+						'attr' => array(
+							'handle' => $data['lang']
+						),
+						'records' => array(),
+						'groups' => array(),
+					);
+				}
+				$groups[$name][$data['lang']]['records'][] = $r;
+			}
+
+			return $groups;
 		}
 
-		/*
-		**	Private stuff
-		*/
 
-		// Helper function which returns all languages which entries use
+	/*-------------------------------------------------------------------------
+		Events:
+	-------------------------------------------------------------------------*/
+
+		public function getExampleFormMarkup() {
+			$states = $this->getToggleStates();
+			$options = array();
+
+			foreach ($states as $lang => $name) {
+				$options[] = array($lang, NULL, $name);
+			}
+
+			$fieldname = 'fields['.$this->get('element_name').']';
+			if ($this->get('allow_multiple_selection') == 'yes') $fieldname .= '[]';
+
+			$label = Widget::Label($this->get('label'));
+			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
+
+			return $label;
+		}
+
+
+	/*-------------------------------------------------------------------------
+		Utilities:
+	-------------------------------------------------------------------------*/
+
 		private function fetchLanguages() {
 			return Symphony::Database()->fetchCol('lang', "SELECT `lang` FROM `tbl_entries_data_".$this->get('id')."` GROUP BY `lang`");
+		}
+
+		// Deprecated since 2.2.1.
+		// Since nothing else broke compatibility, this function is left here to keep
+		// Language Field working with older versions of Symphony.
+		// TODO: remove this when/if some other changes will require newer Symphony.
+		public function buildDSRetrivalSQL($data, &$joins, &$where, $andOperation = false) {
+			return $this->buildDSRetrievalSQL($data, $joins, $where, $andOperation);
 		}
 	}
 

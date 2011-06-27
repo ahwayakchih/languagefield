@@ -1,8 +1,8 @@
 # Field: Language
 
-- Version: 1.2
+- Version: 1.3
 - Author: Marcin Konicki (http://ahwayakchih.neoni.net)
-- Build Date: 25 April 2011
+- Build Date: 27 June 2011
 - Requirements: Symphony version 2.2 or later.
 
 ## Overview
@@ -23,6 +23,7 @@ languages.
 
 ## Changelog
 
+- **1.3** Update for Symphony 2.2.1. Added "Default to" language setting.
 - **1.2** Bugfix release.
 - **1.1** Update for Symphony 2.2.
 - **1.0** Initial release.
