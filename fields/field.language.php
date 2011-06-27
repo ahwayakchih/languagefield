@@ -348,9 +348,6 @@
 		public function displayDatasourceFilterPanel(&$wrapper, $data = NULL, $errors = NULL, $fieldnamePrefix = NULL, $fieldnamePostfix = NULL) {
 			parent::displayDatasourceFilterPanel($wrapper, $data, $errors, $fieldnamePrefix, $fieldnamePostfix);
 
-			$data = preg_split('/,\s*/i', $data);
-			$data = array_map('trim', $data);
-
 			$existing_options = $this->fetchLanguages();
 			if (is_array($existing_options) && !empty($existing_options)) {
 				$optionlist = new XMLElement('ul');
@@ -428,7 +425,13 @@
 
 			if (empty($data)) return NULL;
 
-			if (!is_array($data) && isset($this->lang[$data])) return array('lang' => $data);
+			if (!is_array($data)) {
+				if (isset($this->lang[$data])) return array('lang' => $data);
+				else {
+					$status = self::__INVALID_FIELDS__;
+					return NULL;
+				}
+			}
 
 			$result = array('lang' => array());
 			foreach ($data as $lang) {
