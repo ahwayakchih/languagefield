@@ -355,6 +355,7 @@
 	-------------------------------------------------------------------------*/
 
 		public function displayPublishPanel(XMLElement &$wrapper, $data = null, $flagWithError = null, $fieldnamePrefix = null, $fieldnamePostfix = null, $entry_id = null) {
+			if (empty($data) && (empty($entry_id) || $this->get('required') == 'yes')) $data = array('lang' => $this->get('default_language'));
 			if (!is_array($data['lang'])) $data['lang'] = array($data['lang']);
 
 			$options = array();
@@ -392,6 +393,8 @@
 			foreach ($data as $lang) {
 				if (isset($this->lang[$lang])) $result['lang'][] = $lang;
 			}
+
+			if (empty($result['lang'])) $result = array();
 
 			return $result;
 		}
