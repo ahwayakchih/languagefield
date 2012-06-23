@@ -1,0 +1,29 @@
+<extension id="languagefield" xmlns="http://symphony-cms.com/schemas/extension/1.0">
+	<name>Field: Language</name>
+	<description>This extension provides language selection field that can be used by data-sources to sort entries in the same order as list of languages accepted by browser. Provides "browser-languages" parameter.</description>
+	<repo type="github">https://github.com/ahwayakchih/languagefield</repo>
+	<url type="discuss">http://symphony-cms.com/discuss/thread/773/</url>
+	<url type="issues">https://github.com/ahwayakchih/languagefield/issues</url>
+	<types>
+		<type>Field</type>
+		<type>Field Types</type>
+		<type>Multilingual</type>
+	</types>
+	<authors>
+		<author>
+			<name github="ahwayakchih" symphony="ahwayakchih">Marcin Konicki</name>
+			<email>ahwayakchih@neoni.net</email>
+			<website>http://ahwayakchih.neoni.net</website>
+		</author>
+	</authors>
+	<releases>
+		<release version="1.4" date="2012-06-22" min="2.3">Update for Symphony 2.3. Dropped compatibility with Symphony 2.2.</release>
+		<release version="1.3" date="2011-06-27" min="2.0" max="2.3">Update for Symphony 2.2.1. Added "Default to" language setting.</release>
+		<release version="1.2" date="2011-04-25" min="2.0" max="2.3">Bugfix release.</release>
+		<release version="1.1" date="2011-03-15" min="2.0" max="2.3">Update for Symphony 2.2.</release>
+		<release version="1.0" date="2009-03-12" min="2.0" max="2.3">Initial release.</release>
+	</releases>
+	<media>
+		<item type="image" url="https://github.com/ahwayakchih/languagefield/raw/master/screenshots/flyer.png">Screenshots.</item>
+	</media>
+</extension>

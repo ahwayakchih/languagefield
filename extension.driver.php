@@ -6,12 +6,12 @@
 	
 		public function about(){
 			return array('name' => __('Field: Language'),
-						 'version' => '1.3',
-						 'release-date' => '2011-06-27',
+						 'version' => '1.4',
+						 'release-date' => '2012-06-23',
 						 'author' => array('name' => 'Marcin Konicki',
 										   'website' => 'http://ahwayakchih.neoni.net',
 										   'email' => 'ahwayakchih@neoni.net'),
-						 'description' => __('Adds browser-languages parameter to list of all parameters available for data-sources and XSLT to use. Enables language field.')
+						 'description' => __('Adds `browser-languages` parameter to the list of all parameters available for data-sources and XSLT to use. Enables language selection field.')
 			);
 		}
 
@@ -46,7 +46,7 @@
 
 			if (version_compare($previousVersion, '1.3', '<')) {
 				$found = Symphony::Database()->fetchVar('Field', 0, "SHOW COLUMNS FROM `tbl_fields_language` LIKE 'default_language'");
-				if(!$found) {
+				if (!$found) {
 					$status = Symphony::Database()->query(
 						"ALTER TABLE `tbl_fields_language` ADD `default_language` varchar(10) default 'en'"
 					);
@@ -66,7 +66,7 @@
 				`default_language` varchar(10) default '',
 				PRIMARY KEY  (`id`),
 				KEY `field_id` (`field_id`)
-			)");
+			) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;");
 		}
 
 	}

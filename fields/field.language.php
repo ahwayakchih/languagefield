@@ -188,8 +188,9 @@
 			'zu' => 'isiZulu',						// Zulu
 		);
 
-		public function __construct(&$parent) {
-			parent::__construct($parent);
+		public function __construct() {
+			parent::__construct();
+
 			$this->_name = __('Language');
 			$this->_required = true;
 
@@ -203,10 +204,6 @@
 		Definition:
 	-------------------------------------------------------------------------*/
 
-		public function canShowTableColumn(){
-			return $this->_showcolumn;
-		}
-
 		public function canToggle() {
 			return ($this->get('allow_multiple_selection') == 'yes' ? false : true);
 		}
@@ -217,7 +214,7 @@
 			return array_intersect_key($this->lang, $allowed);
 		}
 
-		public function toggleFieldData($data, $newState) {
+		public function toggleFieldData(array $data, $newState, $entry_id = null){
 			$data['lang'] = General::sanitize($newState);
 			return $data;
 		}
@@ -260,7 +257,7 @@
 					PRIMARY KEY (`id`),
 					KEY `entry_id` (`entry_id`),
 					KEY `language` (`lang`)
-				) TYPE=MyISAM;'
+				) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;'
 			);
 		}
 
@@ -269,14 +266,18 @@
 		Settings:
 	-------------------------------------------------------------------------*/
 
-		public function findDefaults(&$fields) {
-			if (!isset($fields['allow_multiple_selection'])) $fields['allow_multiple_selection'] = 'no';
-			if (!isset($fields['enable_browser_language_support'])) $fields['enable_browser_language_support'] = 'no';
-			if (!isset($fields['allowed_languages'])) $fields['allowed_languages'] = '';
+		public function findDefaults(array &$settings) {
+			if (!isset($settings['allow_multiple_selection'])) $settings['allow_multiple_selection'] = 'no';
+			if (!isset($settings['enable_browser_language_support'])) $settings['enable_browser_language_support'] = 'no';
+			if (!isset($settings['allowed_languages'])) $settings['allowed_languages'] = '';
 		}
 
-		public function displaySettingsPanel(&$wrapper, $errors = NULL) {
+		public function displaySettingsPanel(XMLElement &$wrapper, $errors = null) {
 			parent::displaySettingsPanel($wrapper, $errors);
+
+			$group = new XMLElement('div', NULL, array('class' => 'two columns'));
+
+			$div = new XMLElement('div', NULL, array('class' => 'column'));
 
 			// Allow to select which languages should be available for authors to select when publishing entries.
 			$options = array();
@@ -290,32 +291,11 @@
 			}
 			$label = Widget::Label(__('Show only'));
 			$label->appendChild(Widget::Select('fields['.$this->get('sortorder').'][allowed_languages][]', $options, array('multiple' => 'multiple')));
-			$wrapper->appendChild($label);
+			$div->appendChild($label);
 
-			$div = new XMLElement('div', NULL, array('class' => 'group'));
+			$group->appendChild($div);
 
-			$group = new XMLElement('div');
-			// Allow selection of multiple items
-			$label = Widget::Label();
-			$input = Widget::Input('fields['.$this->get('sortorder').'][allow_multiple_selection]', 'yes', 'checkbox');
-			if ($this->get('allow_multiple_selection') == 'yes') $input->setAttribute('checked', 'checked');
-			$label->setValue(__('%s Allow selection of multiple languages', array($input->generate())));
-			$group->appendChild($label);
-
-			$this->appendShowColumnCheckbox($group);
-			$this->appendRequiredCheckbox($group);
-			$div->appendChild($group);
-
-
-			$group = new XMLElement('div');
-			// When browser language support is enabled, and data-source is sorted by this field,
-			// entries will be sorted by the same order as languages found in list of browser's preferred
-			// languages.
-			$label = Widget::Label();
-			$input = Widget::Input('fields['.$this->get('sortorder').'][enable_browser_language_support]', 'yes', 'checkbox');
-			if ($this->get('enable_browser_language_support') == 'yes') $input->setAttribute('checked', 'checked');
-			$label->setValue(__('%s Support browser\'s language settings', array($input->generate())));
-			$group->appendChild($label);
+			$div = new XMLElement('div', NULL, array('class' => 'column'));
 
 			// Select default language, used when browser does not define preferred languages, or none of them is used on site.
 			$selected = $this->get('default_language');
@@ -325,9 +305,30 @@
 			}
 			$label = Widget::Label(__('Default to'));
 			$label->appendChild(Widget::Select('fields['.$this->get('sortorder').'][default_language]', $options));
-			$group->appendChild($label);
-			$div->appendChild($group);
+			$div->appendChild($label);
 
+			// Allow selection of multiple items
+			$label = Widget::Label();
+			$input = Widget::Input('fields['.$this->get('sortorder').'][allow_multiple_selection]', 'yes', 'checkbox');
+			if ($this->get('allow_multiple_selection') == 'yes') $input->setAttribute('checked', 'checked');
+			$label->setValue(__('%s Allow selection of multiple languages', array($input->generate())));
+			$div->appendChild($label);
+
+			// When browser language support is enabled, and data-source is sorted by this field,
+			// entries will be sorted by the same order as languages found in list of browser's preferred
+			// languages.
+			$label = Widget::Label();
+			$input = Widget::Input('fields['.$this->get('sortorder').'][enable_browser_language_support]', 'yes', 'checkbox');
+			if ($this->get('enable_browser_language_support') == 'yes') $input->setAttribute('checked', 'checked');
+			$label->setValue(__('%s Support browser\'s language settings', array($input->generate())));
+			$div->appendChild($label);
+
+			$group->appendChild($div);
+			$wrapper->appendChild($group);
+
+			$div = new XMLElement('div', NULL, array('class' => 'two columns'));
+			$this->appendShowColumnCheckbox($div);
+			$this->appendRequiredCheckbox($div);
 			$wrapper->appendChild($div);
 		}
 
@@ -345,11 +346,7 @@
 			$fields['allowed_languages'] = ($this->get('allowed_languages') ? implode(',', $this->get('allowed_languages')) : '');
 			$fields['default_language'] = (isset($this->lang[$this->get('default_language')]) ? $this->get('default_language') : '');
 
-			Symphony::Database()->query("DELETE FROM `tbl_fields_".$this->handle()."` WHERE `field_id` = '{$id}' LIMIT 1");
-
-			if (!Symphony::Database()->insert($fields, 'tbl_fields_' . $this->handle())) return false;
-
-			return true;
+			return FieldManager::saveSettings($id, $fields);
 		}
 
 
@@ -357,7 +354,7 @@
 		Publish:
 	-------------------------------------------------------------------------*/
 
-		public function displayPublishPanel(&$wrapper, $data = NULL, $flagWithError = NULL, $fieldnamePrefix = NULL, $fieldnamePostfix = NULL, $entry_id = null) {
+		public function displayPublishPanel(XMLElement &$wrapper, $data = null, $flagWithError = null, $fieldnamePrefix = null, $fieldnamePostfix = null, $entry_id = null) {
 			if (!is_array($data['lang'])) $data['lang'] = array($data['lang']);
 
 			$options = array();
@@ -371,13 +368,14 @@
 			if ($this->get('allow_multiple_selection') == 'yes') $fieldname .= '[]';
 
 			$label = Widget::Label($this->get('label'));
+			if ($this->get('required') != 'yes') $label->appendChild(new XMLElement('i', __('Optional')));
 			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
 
 			if ($flagWithError != NULL) $wrapper->appendChild(Widget::wrapFormElementWithError($label, $flagWithError));
 			else $wrapper->appendChild($label);
 		}
 
-		public function processRawFieldData($data, &$status, $simulate = false, $entry_id = NULL) {
+		public function processRawFieldData($data, &$status, &$message = null, $simulate = false, $entry_id = null) {
 			$status = self::__OK__;
 
 			if (empty($data)) return NULL;
@@ -403,7 +401,7 @@
 		Output:
 	-------------------------------------------------------------------------*/
 
-		public function appendFormattedElement(&$wrapper, $data, $encode = false) {
+		public function appendFormattedElement(XMLElement &$wrapper, $data, $encode = false, $mode = null, $entry_id = null) {
 			if (!is_array($data) or empty($data)) return;
 
 			$list = new XMLElement($this->get('element_name'));
@@ -431,7 +429,7 @@
 			return parent::prepareTableValue(array('value' => @implode(', ', $result)), $link);
 		}
 
-		public function getParameterPoolValue($data, $entry_id=NULL) {
+		public function getParameterPoolValue(array $data, $entry_id = NULL) {
 			if (is_array($data['lang'])) return implode(', ', $data['lang']);
 			return $data['lang'];
 		}
@@ -463,9 +461,7 @@
 
 			if (self::isFilterRegex($data[0])) {
 				$this->_key++;
-				$pattern = str_replace('regexp:', '', $this->cleanValue($data[0]));
-				$joins .= " LEFT JOIN `tbl_entries_data_{$field_id}` AS t{$field_id}_{$this->_key} ON (e.id = t{$field_id}_{$this->_key}.entry_id) ";
-				$where .= " AND (t{$field_id}_{$this->_key}.lang REGEXP '{$pattern}') ";
+				$this->buildRegexSQL($data[0], array('lang'), $joins, $where);
 			} elseif ($andOperation) {
 				foreach ($data as $value) {
 					$this->_key++;
@@ -523,7 +519,7 @@
 	-------------------------------------------------------------------------*/
 
 		public function groupRecords($records) {
-			if(!is_array($records) || empty($records)) return;
+			if (!is_array($records) || empty($records)) return;
 
 			$name = $this->get('element_name');
 			$groups = array($name => array());
@@ -563,6 +559,7 @@
 			if ($this->get('allow_multiple_selection') == 'yes') $fieldname .= '[]';
 
 			$label = Widget::Label($this->get('label'));
+			if ($this->get('required') != 'yes') $label->appendChild(new XMLElement('i', __('Optional')));
 			$label->appendChild(Widget::Select($fieldname, $options, ($this->get('allow_multiple_selection') == 'yes' ? array('multiple' => 'multiple') : NULL)));
 
 			return $label;
@@ -575,14 +572,6 @@
 
 		private function fetchLanguages() {
 			return Symphony::Database()->fetchCol('lang', "SELECT `lang` FROM `tbl_entries_data_".$this->get('id')."` GROUP BY `lang`");
-		}
-
-		// Deprecated since 2.2.1.
-		// Since nothing else broke compatibility, this function is left here to keep
-		// Language Field working with older versions of Symphony.
-		// TODO: remove this when/if some other changes will require newer Symphony.
-		public function buildDSRetrivalSQL($data, &$joins, &$where, $andOperation = false) {
-			return $this->buildDSRetrievalSQL($data, $joins, $where, $andOperation);
 		}
 	}
 
