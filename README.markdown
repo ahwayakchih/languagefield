@@ -2,7 +2,7 @@
 
 - Version: 1.4
 - Author: Marcin Konicki (http://ahwayakchih.neoni.net)
-- Build Date: 22 June 2012
+- Build Date: 23 June 2012
 - Requirements: Symphony 2.3 or later.
 - Text guide on screenshots was rendered with Lobster font (http://www.impallari.com/lobster/) created by Pablo Impallari.
 
